@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Poll - Simple Survey Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    background-color: #f0f2f5;
+    color: #333;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+header h1 {
+    color: #1a73e8;
+    margin-bottom: 0.5rem;
+}
+
+.create-poll-section, .active-polls {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+h2 {
+    color: #333;
+    margin-bottom: 1.5rem;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+input {
+    padding: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+input:focus {
+    outline: none;
+    border-color: #1a73e8;
+}
+
+button {
+    padding: 0.8rem;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #1557b0;
+}
+
+#addOption {
+    background-color: #34a853;
+}
+
+#addOption:hover {
+    background-color: #2d8e47;
+}
+
+.poll-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.poll-question {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+    color: #333;
+}
+
+.poll-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.poll-option:hover {
+    background-color: #f8f9fa;
+}
+
+.poll-option.selected {
+    background-color: #e8f0fe;
+    border-color: #1a73e8;
+}
+
+.poll-results {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+}
+
+.result-bar {
+    background-color: #f0f2f5;
+    height: 20px;
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.result-fill {
+    height: 100%;
+    background-color: #1a73e8;
+    transition: width 0.3s ease;
+}
+
+.result-text {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+</style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Quick Poll</h1>
+            <p>Create and participate in simple polls</p>
+        </header>
+
+        <div class="create-poll-section">
+            <h2>Create New Poll</h2>
+            <form id="pollForm">
+                <input type="text" id="questionInput" placeholder="Enter your question" required>
+                <div id="optionsContainer">
+                    <input type="text" class="option-input" placeholder="Option 1" required>
+                    <input type="text" class="option-input" placeholder="Option 2" required>
+                </div>
+                <button type="button" id="addOption">+ Add Option</button>
+                <button type="submit">Create Poll</button>
+            </form>
+        </div>
+
+        <div class="active-polls">
+            <h2>Active Polls</h2>
+            <div id="pollsContainer"></div>
+        </div>
+    </div>
+    <script>
+class PollApp {
+    constructor() {
+        this.polls = JSON.parse(localStorage.getItem('polls')) || [];
+        this.init();
+    }
+
+    init() {
+        this.pollForm = document.getElementById('pollForm');
+        this.questionInput = document.getElementById('questionInput');
+        this.optionsContainer = document.getElementById('optionsContainer');
+        this.pollsContainer = document.getElementById('pollsContainer');
+
+        document.getElementById('addOption').addEventListener('click', () => this.addOptionInput());
+        this.pollForm.addEventListener('submit', (e) => this.createPoll(e));
+
+        this.renderPolls();
+    }
+
+    addOptionInput() {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'option-input';
+        input.placeholder = `Option ${this.optionsContainer.children.length + 1}`;
+        input.required = true;
+        this.optionsContainer.appendChild(input);
+    }
+
+    createPoll(e) {
+        e.preventDefault();
+
+        const poll = {
+            id: Date.now(),
+            question: this.questionInput.value,
+            options: Array.from(this.optionsContainer.children).map(input => ({ text: input.value, votes: 0 })),
+            totalVotes: 0
+        };
+
+        this.polls.push(poll);
+        this.savePolls();
+        this.resetForm();
+        this.renderPolls();
+    }
+
+    resetForm() {
+        this.pollForm.reset();
+        this.optionsContainer.innerHTML = `
+            <input type="text" class="option-input" placeholder="Option 1" required>
+            <input type="text" class="option-input" placeholder="Option 2" required>
+        `;
+    }
+
+    renderPolls() {
+        this.pollsContainer.innerHTML = this.polls.map(poll => this.createPollCard(poll)).join('');
+    }
+
+    createPollCard(poll) {
+        const voted = localStorage.getItem(`voted_${poll.id}`);
+        return `
+            <div class="poll-card">
+                <h3>${poll.question}</h3>
+                <div class="poll-options">
+                    ${poll.options.map((option, index) => voted ? this.renderResults(poll, option) : this.renderOption(poll, index, option)).join('')}
+                </div>
+                ${!voted ? `<button onclick="pollApp.vote(${poll.id})">Submit Vote</button>` : ''}
+            </div>
+        `;
+    }
+
+    renderOption(poll, index, option) {
+        return `
+            <div class="poll-option" data-poll-id="${poll.id}" data-option-index="${index}">
+                <input type="radio" name="poll_${poll.id}" id="option_${poll.id}_${index}">
+                <label for="option_${poll.id}_${index}">${option.text}</label>
+            </div>
+        `;
+    }
+
+    renderResults(poll, option) {
+        return `
+            <div class="poll-results">
+                <div>${option.text}: ${option.votes} votes</div>
+            </div>
+        `;
+    }
+
+    vote(pollId) {
+        const poll = this.polls.find(p => p.id === pollId);
+        const selectedOption = document.querySelector(`input[name="poll_${pollId}"]:checked`);
+
+        if (!selectedOption) return alert('Please select an option');
+
+        const index = selectedOption.closest('.poll-option').dataset.optionIndex;
+        poll.options[index].votes++;
+        poll.totalVotes++;
+
+        localStorage.setItem(`voted_${pollId}`, 'true');
+        this.savePolls();
+        this.renderPolls();
+    }
+
+    savePolls() {
+        localStorage.setItem('polls', JSON.stringify(this.polls));
+    }
+}
+
+const pollApp = new PollApp();
+
+    </script>
+    </body>
+    </html>
